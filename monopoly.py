@@ -46,26 +46,30 @@ class Board(pygame.sprite.Sprite):
 # Battle Theme
 
 class Battle_Theme:
-    def __init__(self, player, manager):
+    def __init__(self, player):
         self.player = player;
-        self.student = pygame_gui.elements.UIImage(pygame.rect.Rect(50,300,150,250), pygame.image.load("./img/student.png"), manager);
-        self.professor = pygame_gui.elements.UIImage(pygame.rect.Rect(400,50,150,250), pygame.image.load("./img/shimingfeng.png"), manager);
-        self.textbox = pygame_gui.elements.UITextBox("", pygame.rect.Rect(250, 400, 250, 150), manager);
-        self.weapon = pygame_gui.elements.UIImage(pygame.rect.Rect(0,0,30,30), pygame.image.load("./img/rock.png"), manager);
+        self.student = pygame_gui.elements.UIImage(pygame.rect.Rect(50,300,150,250), pygame.image.load("./img/student.png"));
+        self.professor = pygame_gui.elements.UIImage(pygame.rect.Rect(400,50,150,250), pygame.image.load("./img/shimingfeng.png"));
+        self.textbox = pygame_gui.elements.UITextBox("", pygame.rect.Rect(250, 400, 250, 150));
+        self.weapon = pygame_gui.elements.UIImage(pygame.rect.Rect(0,0,30,30), pygame.image.load("./img/rock.png"));
         self.round = 0;
+        self.student.hp = 50
         self.student.health_capacity = 50;
         self.student.current_health = 50;
+        self.student_hp_bar = pygame_gui.elements.UIScreenSpaceHealthBar(pygame.rect.Rect(50,550,150,30), sprite_to_monitor = self.student);
+
         self.student.defending = False;
         self.student.reflecting = False;
         self.student.debuffing = False;
         self.student.good_at_programming = self.player.score["計算機程式設計"] >= 80;
         self.student.has_vpy_repo = "資訊部長的vpython github repository" in self.player.items.keys();
         # self.student.has_rock_thrower = "投石器" in self.player.items.keys();
+        self.professor.hp = 50;
         self.professor.health_capacity = 50;
         self.professor.current_health = 50;
+        self.professor_hp_bar = pygame_gui.elements.UIScreenSpaceHealthBar(pygame.rect.Rect(400,300,150,30), sprite_to_monitor = self.professor);
         self.professor.raging = 0;
-        self.student_hp_bar = pygame_gui.elements.UIScreenSpaceHealthBar(pygame.rect.Rect(50,550,150,30), manager, self.student);
-        self.professor_hp_bar = pygame_gui.elements.UIScreenSpaceHealthBar(pygame.rect.Rect(400,300,150,30), manager, self.professor);
+
         self.stats = [];
         self.stats_button = [];
         self.get_stat("投石器", "丟石頭");
@@ -74,7 +78,7 @@ class Battle_Theme:
         self.get_stat("星爆氣流斬", "???");
 
         for i in range(0,4):
-            self.stats_button.append(pygame_gui.elements.UIButton(pygame.rect.Rect(600,350+i*50,150,40), self.stats[i],manager));
+            self.stats_button.append(pygame_gui.elements.UIButton(pygame.rect.Rect(600,350+i*50,150,40), self.stats[i]));
             self.stats_button[i].btnid = i;
             if self.stats[i] == "???":
                 self.stats_button[i].disable();
@@ -85,199 +89,285 @@ class Battle_Theme:
         else:
             self.stats.append(name2);
 
-    def clear(self):
+    def show_clear(self, args = None):
         self.textbox.hide();
         for i in range(4):
             self.stats_button[i].hide();
         self.weapon.hide();
 
     def show_text(self, text):
-        self.clear();
+        self.show_clear();
         self.textbox.set_text(text);
         self.textbox.show();
 
-    def show_stats_buttons(self):
-        self.clear();
+    def show_stats_buttons(self, args = None):
+        self.show_clear();
         for i in range(0,4):
             self.stats_button[i].show();
 
-    def show_weapon_animation(self, arg):
-        self.clear();
-        self.weapon.set_image(pygame.image.load(arg[0]));
-        self.weapon.set_position((arg[1], arg[2]));
-        self.weapon.set_dimensions((arg[3], arg[4]));
+    def show_weapon(self, args):
+        self.show_clear();
+        self.weapon.set_image(pygame.image.load(args[0]));
+        self.weapon.set_position((args[1], args[2]));
+        self.weapon.set_dimensions((args[3], args[4]));
         self.weapon.show();
 
-    def show_student_state(self, state_type):
-        self.student.set_image(pygame.image.load(state_type));
+    def show_student_image(self, new_state):
+        self.student.set_image(pygame.image.load(new_state));
 
-    def show_professor_state(self, state_type):
-        self.professor.set_image(pygame.image.load(state_type));
+    def show_professor_image(self, new_state):
+        self.professor.set_image(pygame.image.load(new_state));
 
-    def get_intro(self):
-        queue = [];
-        queue.append(["text", "石明豐出現了!"]);
-        queue.append(["wait", 2]);
-        queue.append(["select"]);
-        queue.append(["stop"]);
-        return queue;
-
-    def get_professor_stat(self):
-        if self.round == 3: #vpython
-            return "vpython作業";
-        elif self.round % 6 == 2: #bomb
-            return "定時炸彈";
-        elif self.round % 5 == 4: #rage
-            return "盪鞦韆";
-        else:
+    def get_professor_stat(self, stat):
+        seed = random.randint(1,10);
+        if self.round == 1:
             return "投石器";
-
-    def student_attack(self, damage):
-        if self.professor.current_health < damage:
-            self.professor.current_health = 0;
-        else:
-            self.professor.current_health -= damage;
-
-    def professor_attack(self, damage):
-        if self.student.current_health < damage:
-            self.student.current_health = 0;
-        else:
-            self.student.current_health -= damage;
-
+        elif self.round == 2:
+            return "定時炸彈";
+        elif self.round == 3: #vpython
+            return "vpython作業";
+        elif stat == "電神的守護": # 若沒rage則rage, 否則50%炸彈50%投石器
+            if self.professor.raging:
+                if seed <= 5:
+                    return "定時炸彈";
+                else:
+                    return "投石器";
+            else:
+                return "盪鞦韆";
+        else: # 20% rage(若沒rage), 20% bomb, 否則投石器
+            if seed <= 2 and not self.professor.raging:
+                return "盪鞦韆";
+            elif seed <= 4:
+                return "定時炸彈";
+            else:
+                return "投石器";
+            
     def generate_student_atk_event(self, stat_name):
         queue = [];
-        queue.append(["text", f"你使用了 {stat_name} !"]);
-        queue.append(["wait",2]);
+        queue.append([self.show_text, f"你使用了 {stat_name} !"]);
+        queue.append(["Wait",2]);
+        damage = 0;
+
         if stat_name == "丟石頭":
             damage = 5;
             if self.student.debuffing:
                 damage //= 5;
-            queue.extend(self.generate_weapon_animation(0));
-            queue.append(["student_atk", damage]);
+            queue.extend(self.generate_weapon_animation(0, damage));
+            # if damage <= 5:
+            #     queue.append([self.show_text, "效果不是很好..."]);
+            #     queue.append(["wait", 2]);
         elif stat_name == "投石器":
             damage = 10;
             if self.student.debuffing:
                 damage //= 5;
-            queue.extend(self.generate_weapon_animation(0));
-            queue.append(["student_atk", damage]);
+            queue.extend(self.generate_weapon_animation(0, damage));
+            # if damage <= 5:
+            #     queue.append([self.show_text, "效果不是很好..."]);
+            #     queue.append(["wait", 2]);
         elif stat_name == "防守":
             self.student.defending = True;
-            queue.append(["student_image", "./img/student_defend.png"]);
+            queue.append([self.show_clear, 0]);
+            queue.append([self.show_student_image, "./img/student_defend.png"]);
+            queue.append(["Wait", 1]);
+            queue.append([self.show_text, "你這回合受到的傷害將減少50%!"]);
+            queue.append(["Wait", 2]);
+
         elif stat_name == "電神的守護":
             self.student.reflecting = True;
-            queue.append(["student_image", "./img/student_reflect.png"]);
-        elif stat_name == "星爆氣流斬":
-            queue.extend(self.generate_weapon_animation(1));
+            queue.append([self.show_clear, 0]);
+            queue.append([self.show_student_image, "./img/student_reflect.png"]);
+            queue.append(["Wait", 1])
 
-        queue.append(["clear"]);
-        queue.append(["wait", 0.5]);
+        elif stat_name == "星爆氣流斬":
+            damage = 16;
+            queue.extend(self.generate_weapon_animation(1, damage));
+
+        self.professor.hp -= damage;
         return queue;
 
     def generate_professor_atk_event(self, stat_name):
         queue = [];
-        queue.append(["text", f"石明豐使用了 {stat_name} !"]);
+        queue.append([self.show_text, f"石明豐使用了 {stat_name} !"]);
         queue.append(["wait",2]);
+        damage = 0;
+        reverse = False;
+
         if stat_name == "投石器":
             damage = 10;
             if self.professor.raging > 0:
                 damage = 15;
             if self.student.defending:
                 damage //= 2;
-            queue.extend(self.generate_weapon_animation(2));
             if self.student.reflecting:
-                if self.student.debuffing:
-                    damage //= 5;
-                queue.extend(self.generate_weapon_animation(0));
-                queue.append(["student_atk", damage]);
+                if random.randint(1,2) == 1: # success
+                    reverse = True;
+                    queue.extend(self.generate_weapon_animation(2, 0));
+                    queue.extend(self.generate_weapon_animation(0, damage));
+                    queue.append([self.show_text, "反擊成功!"]);
+                    queue.append(["wait", 2]);
+                else: # fail
+                    queue.extend(self.generate_weapon_animation(2, damage));
+                    queue.append([self.show_text, "反擊失敗..."]);
+                    queue.append(["wait", 2]);
             else:
-                queue.append(["professor_atk", damage]);
+                queue.extend(self.generate_weapon_animation(2, damage));
+
         elif stat_name == "盪鞦韆":
-            self.professor.raging = 3;
-            queue.append(["text", "石明豐的傷害增加了!"]);
+            self.professor.raging = 4;
+            queue.append([self.show_clear, 0]);
+            queue.append([self.show_professor_image, "./img/shimingfeng_rage.png"]);
+            queue.append(["wait", 1]);
+            queue.append([self.show_text, "石明豐的傷害增加了!"]);
             queue.append(["wait", 2]);
-            queue.append(["professor_image", "./img/shimingfeng_rage.png"]);
+            
         elif stat_name == "vpython作業":
             if self.student.good_at_programming:
-                queue.append(["text", "因為你很會寫程式，所以絲毫不受影響!"]);
+                queue.append([self.show_text, "因為你很會寫程式，所以絲毫不受影響!"]);
                 queue.append(["wait", 2]);
             elif self.student.has_vpy_repo:
-                queue.append(["text", "因為你擁有「資訊部長的vpython github repository」，所以絲毫不受影響!"]);
+                queue.append([self.show_text, "因為你擁有「資訊部長的vpython github repository」，所以絲毫不受影響!"]);
                 queue.append(["wait", 2]);
-                queue.append(["student_image", "./img/student_debuff.png"]);
             else:
                 self.student.debuffing = True;
-                queue.append(["text", f"你的 {self.stats[0]} 傷害減少80%!"]);
+                queue.append([self.show_clear, 0]);
+                queue.append([self.show_student_image, "./img/student_debuff.png"]);
+                queue.append(["wait", 1]);
+                queue.append([self.show_text, f"你的 {self.stats[0]} 傷害減少80%!"]);
                 queue.append(["wait", 2]);
+
         elif stat_name == "定時炸彈":
             pass;
 
-        queue.append(["clear"]);
-        queue.append(["wait", 0.5]);
-        return queue;        
+        if reverse:
+            self.professor.hp -= damage;
+        else:
+            self.student.hp -= damage;
 
-    def generate_weapon_animation(self, weapon_type):
+        return queue;
+
+    def generate_weapon_animation(self, weapon_type, total_damage):
         queue = [];
         if weapon_type == 0: # rock
-            for i in range(5):
-                x = 200 + i * 30;
+            for i in range(10):
+                x = 200 + i * 15;
                 y = 0.005 * (x-350)**2 + 200;
-                queue.append(["weapon", "./img/rock.png", x, y, 30, 30]);
-                queue.append(["wait", 0.1]);
+                queue.append([self.show_weapon, ["./img/rock.png", x, y, 30, 30]]);
+                queue.append(["wait", 0.05]);
+            queue.append([self.damage, [1, total_damage]]);
+            
         elif weapon_type == 1: # c8763
             for i in range(8):
-                queue.append(["weapon", "./img/c8763_1.png", 400, 150, 150, 100]);
-                queue.append(["student_atk", 1]);
+                queue.append([self.show_weapon, ["./img/c8763_1.png", 400, 150, 150, 100]]);
+                queue.append([self.damage, [1, total_damage//16]]);
                 queue.append(["wait", 0.05]);
-                queue.append(["weapon", "./img/c8763_2.png", 400, 150, 150, 100]);
-                queue.append(["student_atk", 1]);
+                queue.append([self.show_weapon, ["./img/c8763_2.png", 400, 150, 150, 100]]);
+                queue.append([self.damage, [1, total_damage//16]]);
                 queue.append(["wait", 0.05]);
-        elif weapon_type == 2: # professor_rock
-            for i in range(5):
-                x = 200 + (5-i) * 30;
+
+        elif weapon_type == 2: # professor rock
+            for i in range(10):
+                x = 200 + (10-i) * 15;
                 y = 0.005 * (x-350)**2 + 200;
-                queue.append(["weapon", "./img/rock.png", x, y, 30, 30]);
-                queue.append(["wait", 0.1]);
+                queue.append([self.show_weapon, ["./img/rock.png", x, y, 30, 30]]);
+                queue.append(["wait", 0.05]);
+            queue.append([self.damage, [0, total_damage]]);
+
         elif weapon_type == 3: # bomb
             pass;
 
         return queue;
 
-    def check(self):
+    def damage(self, args):
+        id, damage = args[0], args[1];
+        if id == 0: # 學生受到傷害
+            if self.student.current_health < damage:
+                self.student.current_health = 0;
+            else:
+                self.student.current_health -= damage;
+        elif id == 1: # 教授受到傷害
+            if self.professor.current_health < damage:
+                self.professor.current_health = 0;
+            else:
+                self.professor.current_health -= damage;
+
+    def get_intro(self):
         queue = [];
-        if self.student.current_health <= 0:
-            queue.append(["text", "你輸了!"]);
-            queue.append(["wait", 2]);
-            return queue;
-        if self.professor.current_health <= 0:
-            queue.append(["text", "你贏了!"]);
-            queue.append(["wait", 2]);
-            return queue;
-        self.student.defending = False;
-        self.student.reflecting = False;
-        self.professor.raging -= 1;
-        if self.student.debuffing:
-            queue.append(["student_image", "./img/student_debuff.png"]);
-        else:
-            queue.append(["student_image", "./img/student.png"]);
-        if self.professor.raging <= 0:
-            self.professor.raging = 0;
-            queue.append(["professor_image", "./img/shimingfeng.png"]);
-        queue.append(["select"]);
-        queue.append(["stop"]);
+        queue.append([self.show_text, "石明豐出現了!"]);
+        queue.append(["Wait", 2]);
+        queue.extend(self.new_round());
         return queue;
 
-    def handle_button_press(self, button):
+    def new_round(self):
+        queue = [];
         self.round += 1;
+        self.student.defending = False;
+        self.student.reflecting = False;
+        if self.student.debuffing:
+            queue.append([self.show_student_image, "./img/student_debuff.png"]);
+        else:
+            queue.append([self.show_student_image, "./img/student.png"]);
+        
+        self.professor.raging -= 1;
+        
+        if self.professor.raging > 0:
+            queue.append([self.show_professor_image, "./img/shimingfeng_rage.png"]);
+        else:
+            queue.append([self.show_professor_image, "./img/shimingfeng.png"]);
+        queue.append([self.show_stats_buttons, 0]);
+        queue.append(["stop", 0]);
+        return queue;
+
+    def student_win(self):
+        return [[self.show_text, "你贏了!"], ["wait", 3], ["goodbye", None]];
+
+    def professor_win(self):
+        return [[self.show_text, "你輸了!"], ["wait", 3], ["goodbye", None]];
+
+    def handle_button_press(self, button):
         student_stat = self.stats[button.btnid];
-        professor_stat = self.get_professor_stat();
+        professor_stat = self.get_professor_stat(student_stat);
+
         queue = [];
         queue.extend(self.generate_student_atk_event(student_stat));
-        queue.extend(self.generate_professor_atk_event(professor_stat));
-        queue.append(["check"]);
-        # queue.append(["select"]);
-        # queue.append(["stop"]);
-        return queue;
+        print(self.professor.current_health);
+
+        if self.student.hp <= 0:
+            queue.extend(self.professor_win());
+            return queue;
+        elif self.professor.hp <= 0:
+            queue.extend(self.student_win());
+            return queue;
         
+        queue.extend(self.generate_professor_atk_event(professor_stat));
+        if self.student.hp <= 0:
+            queue.extend(self.professor_win());
+            return queue;
+        elif self.professor.hp <= 0:
+            queue.extend(self.student_win());
+            return queue;
+
+        queue.extend(self.new_round());
+        
+        return queue;
+
+# Start Theme
+
+class Start_Theme:
+    def __init__(self):
+        # self.manager = manager;
+        self.title = pygame_gui.elements.UILabel(pygame.rect.Rect(200, 100, 400, 150), "電機系大冒險");
+        self.start_button = pygame_gui.elements.UIButton(pygame.rect.Rect(300, 400, 200, 150), "開始遊戲");
+
+    def get_intro(self):
+        # queue = list();
+        # queue.append(("stop", ()));
+        # return queue;
+        return [["Stop", None]];
+
+    def handle_button_press(self, button):
+        # print(button_name);
+        if button == self.start_button:
+            return [["NewState", ["Battle", player0]]];
 
 # Player Data
 
@@ -306,7 +396,13 @@ class Player:
         else:
             self.items[item_name] = count;
 
+# debug 用
+player0 = Player(1, None);
+player0.add_item("投石器", 1);
+player0.add_item("電神的守護", 1);
+player0.add_item("星爆氣流斬", 1);
 
+# 之後可以搬到monopoly_theme的class裡面
 def load_map_data(mypath = "./data/map.txt"):
     map_data = {};
     with open(mypath) as f:
@@ -316,14 +412,27 @@ def load_map_data(mypath = "./data/map.txt"):
             map_data[name] = {"x":int(xpos), "y":int(ypos), "is_split":int(is_split), "next":nextname};
     return map_data;
 
-def monopoly_init():
-    pass;
+# def monopoly_init():
+#     pass;
 
-def battle_init(player):
-    pass;
+# def battle_init(player):
+#     pass;
 
-def cswap_init(player):
-    pass;
+# def cswap_init(player):
+#     pass;
+
+def initialize_new_stage(args, queue):
+    state = args[0];
+    if state == "Start":
+        theme = Start_Theme();
+        queue.extend(theme.get_intro());
+    elif state == "Battle":
+        theme = Battle_Theme(args[1]);
+        queue.extend(theme.get_intro());
+
+    # queue.extend(theme.get_intro());
+    return theme;
+
 
 def main():
     pygame.init();
@@ -331,12 +440,11 @@ def main():
     WINDOW_WIDTH = 800;
     WINDOW_HEIGHT = 600;
     WHITE = (255,255,255);
-    FPS = 30;
+    FPS = 60;
     is_running = True;
-    state = "battle";
-    process_queue = [["init"]];
+    state = None; # 目標是不要用到這個state，但可做為debug用
+    process_queue = list(); # 可以存入文字或類別的方法
     # animation_queue = [];
-    process = "";
 
     window_surface = pygame.display.set_mode((WINDOW_WIDTH,WINDOW_HEIGHT));
     pygame.display.set_caption("電機系大冒險");
@@ -346,10 +454,10 @@ def main():
     manager.set_locale("zh");
     # battle_theme = pygame_gui.UIManager((800,600));
 
-    player1 = Player(1, None);
-    player1.add_item("投石器", 1);
-    player1.add_item("電神的守護", 1);
-    player1.add_item("星爆氣流斬", 1);
+    # start game
+    process_queue.append(["NewState", ["Start"]]);
+    # state = "start";
+    # current_theme = initialize_new_stage(state, process_queue);
 
     # myfont = pygame.font.SysFont("microsoftjhenghei", 30);
     
@@ -366,69 +474,39 @@ def main():
             is_running = False;
             break;
 
-        if not isinstance(process_queue[0], list):
-            print(f"wrong process format: {process_queue[0]}");
+        # if not isinstance(process_queue[0], list):
+        #     print(f"wrong process format: {process_queue[0]}");
 
         process = process_queue[0][0];
-        # print(process);
+        process_args = process_queue[0][1];
+        # print(process, process_args);
 
-        if state == "monopoly":
-            pass;
-        elif state == "battle":
-            if process == "init":
-                manager.clear_and_reset();
-                battle_theme = Battle_Theme(player1, manager);
-                process_queue.extend(battle_theme.get_intro());
+        if process == "NewState" or process == "new_state":
+            state = process_args[0];
+            print("=======new state========");
+            print(state);
+            manager.clear_and_reset();
+            current_theme = initialize_new_stage(process_args, process_queue);
+            process_queue.pop(0);
+
+        elif process == "Wait" or process == "wait":
+            if process_args < 0:
                 process_queue.pop(0);
-
-            elif process == "clear":
-                battle_theme.clear();
-                process_queue.pop(0);
-
-            elif process == "select":
-                battle_theme.show_stats_buttons();
-                process_queue.pop(0);
-
-            elif process == "text":
-                battle_theme.show_text(process_queue[0][1]);
-                process_queue.pop(0);
-
-            elif process == "student_atk":
-                battle_theme.student_attack(process_queue[0][1]);
-                process_queue.pop(0);
-
-            elif process == "professor_atk":
-                battle_theme.professor_attack(process_queue[0][1]);
-                process_queue.pop(0);
-
-            elif process == "student_image":
-                battle_theme.show_student_state(process_queue[0][1]);
-                process_queue.pop(0);
-
-            elif process == "professor_image":
-                battle_theme.show_professor_state(process_queue[0][1]);
-                process_queue.pop(0);
-
-            elif process == "wait":
-                process_queue[0][1] -= time_delta;
-                if process_queue[0][1] <= 0:
-                    process_queue.pop(0);
-
-            elif process == "weapon":
-                battle_theme.show_weapon_animation(process_queue[0][1:]);
-                process_queue.pop(0);
-
-            elif process == "stop":
-                pass;
-
-            elif process == "check":
-                process_queue.extend(battle_theme.check());
-                process_queue.pop(0);
-            
             else:
-                print("case not handled: %s" % process);
-                process_queue.pop(0);
+                process_queue[0][1] = process_args - time_delta;
 
+        elif process == "Stop" or process == "stop":
+            pass;
+
+        elif process == "Goodbye" or process == "goodbye":
+            print("goodbye");
+            is_running = False;
+            break;
+
+        else:
+            # print(process, process_args);
+            process(process_args);
+            process_queue.pop(0);
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -437,12 +515,15 @@ def main():
                 pass;
                 
             if event.type == pygame_gui.UI_BUTTON_PRESSED:
-                if state == "monopoly":
-                    pass;
-                elif state == "battle":
-                    if process == "stop":
-                        process_queue.extend(battle_theme.handle_button_press(event.ui_element));
-                        process_queue.pop(0);
+                # if state == "monopoly":
+                #     pass;
+                # elif state == "battle":
+                #     if process == "stop":
+                #         process_queue.extend(battle_theme.handle_button_press(event.ui_element));
+                #         process_queue.pop(0);
+                process_queue.extend(current_theme.handle_button_press(event.ui_element));
+                process_queue.pop(0);
+                # print(process_queue);
 
             manager.process_events(event);
         manager.update(time_delta);
