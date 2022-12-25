@@ -28,6 +28,37 @@ class UIButton(pygame_gui.elements.UIButton):
         super().__init__(rect, text);
         self.onclick = func;
 
+class UI_Multi_Selection:
+    def __init__(self, prob, img, ans, res, tl):
+        print("hello");
+        ui_manager.clear_and_reset();
+        self.problem_statement = pygame_gui.elements.UITextBox(prob, rect(100, 50, 600, 300));
+        if img != "":
+            self.problem_image = pygame_gui.elements.UIImage(rect(300, 250, 200, 120), load_image(img));
+        self.answer_button = [];
+        pos = [(100, 400), (420, 400), (100, 500), (420, 500)];
+        random.shuffle(pos);
+        for i in range(4):
+            btn = UIButton(rect(pos[i][0], pos[i][1], 280, 80), ans[i], res[i]);
+            self.answer_button.append(btn);
+
+        if tl > 0:
+            self.timer = pygame_gui.elements.UIImage(rect(700, 20, 20, 20), load_image("./img/clock.png"));
+            self.timer_text = pygame_gui.elements.UILabel(rect(730, 20, 50, 20), self.num_to_time(tl));
+        
+    def num_to_time(self, t):
+        m, s = t // 60, t % 60;
+        mm = str(m) if m >= 10 else "0"+str(m);
+        ss = str(s) if s >= 10 else "0"+str(s);
+        return mm + ":" + ss;
+
+    def count(self, args):
+        new_time = args["t"];
+        print(new_time);
+        self.timer_text.set_text(self.num_to_time(new_time));
+
+    
+
 class UI_Start_Menu:
     def __init__(self, start_func, rules_func):
         ui_manager.clear_and_reset();
@@ -189,9 +220,12 @@ class Battle:
         self.get_stat("電神的守護", "???");
         self.get_stat("星爆氣流斬", "???");
 
+        self.problemset = self.get_problemset();
+
+        self.in_problem = False;
         self.ui_theme = UI_Battle_Theme(self.student_state, self.professor_state, self.stats, self.button_functions);
 
-        self.timer = 0.1;
+        self.timer = 0;
         self.get_intro();
         self.reset_round();
 
@@ -203,24 +237,37 @@ class Battle:
             self.stats.append(name2);
             self.button_functions.append(lambda:self.new_round(name2));
 
-    def push(self, func, **kwargs):
+    def get_problemset(self):
+        temp = [];
+        with open("./data/physics.csv") as file:
+            reader = csv.reader(file);
+            for each_row in reader:
+                temp.append(each_row);
+        return temp;
+
+
+    def push(self, func, time = -1, **kwargs):
         kwargs["func"] = func;
-        pygame.time.set_timer(pygame.event.Event(pygame.event.custom_type(), kwargs), int(self.timer*1000), 1);
+        if time != -1:
+            t = time;
+        else:
+            t = self.timer + 0.1;
+        pygame.time.set_timer(pygame.event.Event(pygame.event.custom_type(), kwargs), int(t*1000), 1);
     
     def new_round(self, stat):
         student_stat = stat;
         professor_stat = self.get_professor_stat(student_stat);
 
-        self.timer = 0.1;
+        self.timer = 0;
 
-        self.generate_student_atk_event(student_stat);
+        temp = self.generate_student_atk_event(student_stat);
         res = self.check_win_condition();
-        if res != 0:
+        if temp != 0 or res != 0:
             return;
 
-        self.generate_professor_atk_event(professor_stat);
+        temp = self.generate_professor_atk_event(professor_stat);
         res = self.check_win_condition();
-        if res != 0:
+        if temp != 0 or res != 0:
             return;
             
         self.reset_round();
@@ -240,8 +287,6 @@ class Battle:
         self.student_state["defending"] = False;
         self.student_state["reflecting"] = False;
         self.professor_state["raging"] = max(self.professor_state["raging"]-1, 0);
-        print(self.student_state["hp"]);
-        print(self.professor_state["hp"]);
 
         self.push(self.ui_theme.reset, defending = False, reflecting = False, debuffing = self.student_state["debuffing"], raging = self.professor_state["raging"]);
 
@@ -307,6 +352,7 @@ class Battle:
             self.generate_weapon_animation(2, damage);
 
         self.professor_state["hp"] -= damage;
+        return 0;
 
     def generate_professor_atk_event(self, stat_name):
         self.push(self.ui_theme.show_text, text = f"石明豐使用了 {stat_name} !");
@@ -360,11 +406,14 @@ class Battle:
         elif stat_name == "定時炸彈":
             damage = 0;
             self.generate_weapon_animation(3, damage);
+            return 1;
 
         if reverse:
             self.professor_state["hp"] -= damage;
         else:
             self.student_state["hp"] -= damage;
+
+        return 0;
 
     def generate_weapon_animation(self, weapon_type, total_damage):
         if weapon_type == 0: # rock
@@ -395,16 +444,94 @@ class Battle:
                 self.timer += 0.05;
 
         elif weapon_type == 3: # bomb
-           for i in range(10):
+            for i in range(10):
                 x = 200 + (10-i) * 15;
                 y = 0.005 * (x-350)**2 + 200;
                 self.push(self.ui_theme.show_rock, image = "./img/bomb.png", pos = (x, y));
                 self.timer += 0.05;
+
+            self.timer += 0.1;
+            self.push(self.generate_selecting_problem);
+
         self.timer += 0.2;
 
     def get_intro(self):
         self.push(self.ui_theme.show_text, text = "石明豐出現了!");
         self.timer += 2;
+
+    def generate_selecting_problem(self, args):
+        self.timer = 0;
+        self.in_problem = True;
+        idx = random.randint(0, len(self.problemset)-1);
+        text, img, ans, res = self.problemset[idx][0], self.problemset[idx][1], self.problemset[idx][2:6], self.problemset[idx][6:10];
+        func_list = [];
+        print(res);
+        for i in range(4):
+            if res[i] == "1":
+                func_list.append(self.right_answer);
+            else:
+                func_list.append(self.wrong_answer);
+        
+        self.ui_theme = UI_Multi_Selection(text, img, ans, func_list, 10);
+        self.push(self.do_count, t = 10);
+
+    def do_count(self, args):
+        t = args["t"];
+        if self.in_problem:
+            self.push(self.ui_theme.count, t = t);
+            if t == 0:
+                self.push(self.time_is_up);
+            else:
+                self.push(self.do_count, time = 1, t = t - 1);
+
+    def right_answer(self):
+        self.in_problem = False;
+        self.ui_theme = UI_Battle_Theme(self.student_state, self.professor_state, self.stats, self.button_functions);
+        self.timer = 0;
+        self.push(self.ui_theme.show_text, text = "恭喜你答對了，成功躲避了傷害!");
+        self.timer += 2;
+        self.check_win_condition();
+        self.reset_round();
+
+    def wrong_answer(self):
+        self.in_problem = False;
+        self.ui_theme = UI_Battle_Theme(self.student_state, self.professor_state, self.stats, self.button_functions);
+        self.timer = 0;
+        self.push(self.ui_theme.show_text, text = "你答錯了!");
+        self.timer += 2;
+        damage = 30;
+        if self.professor_state["raging"] > 0:
+            damage = 45;
+        if self.student_state["defending"]:
+            damage //= 2;
+        self.student_state["hp"] -= damage;
+        self.push(self.ui_theme.damage, id = 0, dmg = damage);
+        res = self.check_win_condition();
+        if res != 0:
+            return;
+        self.reset_round();
+
+    def time_is_up(self, args):
+        self.in_problem = False;
+        self.ui_theme = UI_Battle_Theme(self.student_state, self.professor_state, self.stats, self.button_functions);
+        self.timer = 0;
+        self.push(self.ui_theme.show_text, text = "時間到了!");
+        self.timer += 2;
+        damage = 30;
+        if self.professor_state["raging"] > 0:
+            damage = 45;
+        if self.student_state["defending"]:
+            damage //= 2;
+        self.student_state["hp"] -= damage;
+        self.push(self.ui_theme.damage, id = 0, dmg = damage);
+        res = self.check_win_condition();
+        if res != 0:
+            return;
+        self.reset_round();
+
+        
+
+
 
 class UI_CSWAP_Theme:
     def __init__(self):
@@ -424,23 +551,8 @@ class Selecting_Problem:
                 print("An error occured while importing data files: " + str(err));
         self.length = len(self.problem_list);
 
-    def generate_problem(self, time_limit = None):
-        idx = random.randint(1, self.length) - 1;
-        prob_text = self.problem_list[idx][0]
-        ans_text = self.problem_list[idx][1:5];
-        ans = self.problem_list[idx][5];
-        self.problem_statement = pygame_gui.elements.UITextBox(prob_text, rect(100, 50, 600, 300));
-        self.answer_button = [];
-        pos = [(100, 400), (420, 400), (100, 500), (420, 500)];
-        for i in range(4):
-            self.answer_button.append(pygame_gui.elements.UIButton(rect(pos[i][0], pos[i][1], 280, 80), ans_text[i]));
-            self.answer_button[i].btnid = i;
-        self.ans = ans;
-        if time_limit != None:
-            self.time_left = time_limit;
+    
 
-    def handle_button_press():
-        pass;
 
 # Player Data
 
@@ -502,8 +614,6 @@ class Game:
                 print("You won!");
             elif return_value == -1:
                 print("You lose!");
-
-
 
 
 def main():
