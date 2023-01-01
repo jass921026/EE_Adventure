@@ -18,6 +18,12 @@ def load_image(image_path):
         image = pygame.image.load("./img/blank.png");
     return image;
 
+def push(func, time, **kwargs):
+        kwargs["func"] = func;
+        t = time;
+
+        pygame.time.set_timer(pygame.event.Event(pygame.event.custom_type(), kwargs), int(t*1000), 1);
+
 # def load_text_file(path):
 #     pass;
 
@@ -26,25 +32,28 @@ def load_image(image_path):
 class UIButton(pygame_gui.elements.UIButton):
     def __init__(self, rect, text = "", func = None):
         super().__init__(rect, text);
-        self.onclick = func;
+        if func:
+            self.onclick = func;
+        else:
+            self.disable();
 
 class UI_Multi_Selection:
-    def __init__(self, prob, img, ans, res, tl):
-        print("hello");
+    def __init__(self, prob, img, ans, res, tl, shuf = True):
         ui_manager.clear_and_reset();
         self.problem_statement = pygame_gui.elements.UITextBox(prob, rect(100, 50, 600, 300));
         if img != "":
             self.problem_image = pygame_gui.elements.UIImage(rect(300, 250, 200, 120), load_image(img));
         self.answer_button = [];
         pos = [(100, 400), (420, 400), (100, 500), (420, 500)];
-        random.shuffle(pos);
+        if shuf:
+            random.shuffle(pos);
         for i in range(4):
             btn = UIButton(rect(pos[i][0], pos[i][1], 280, 80), ans[i], res[i]);
             self.answer_button.append(btn);
 
         if tl > 0:
             self.timer = pygame_gui.elements.UIImage(rect(700, 20, 20, 20), load_image("./img/clock.png"));
-            self.timer_text = pygame_gui.elements.UILabel(rect(730, 20, 50, 20), self.num_to_time(tl));
+            self.timer_text = pygame_gui.elements.UITextBox(self.num_to_time(tl), rect(700, 20, 70, 50));
         
     def num_to_time(self, t):
         m, s = t // 60, t % 60;
@@ -54,7 +63,7 @@ class UI_Multi_Selection:
 
     def count(self, args):
         new_time = args["t"];
-        print(new_time);
+        # print(new_time);
         self.timer_text.set_text(self.num_to_time(new_time));
 
     
@@ -76,21 +85,29 @@ class UI_Rules_Menu:
 class Start_Menu:
     def __init__(self):
         self.name = "Start_Menu";
-        self.ui_theme = UI_Start_Menu(self.btn_start, self.btn_rules);
+        self.ui_theme = UI_Start_Menu(self.btn_select_players, self.btn_rules);
 
-    def btn_start(self):
-        pygame.event.post(pygame.event.Event(NEW_STAGE, {"name":self.name, "value":0}));
-    
+    def btn_select_players(self):
+        ans = ["1", "2", "3", "4"];
+        res = [];
+        for i in range(1, 5):
+            res.append(self.btn_start(i));
+        self.ui_theme = UI_Multi_Selection("請選擇玩家數量:", "", ans, res, -1, False);
+
+    def btn_start(self, player_cnt):
+        def func():
+            pygame.event.post(pygame.event.Event(NEW_STAGE, {"name":self.name, "value":player_cnt}));
+        return func;
+
     def btn_rules(self):
         self.ui_theme = UI_Rules_Menu(self.btn_back);
 
     def btn_back(self):
-        self.ui_theme = UI_Start_Menu(self.btn_start, self.btn_rules);
+        self.ui_theme = UI_Start_Menu(self.btn_select_players, self.btn_rules);
 
     def handle_button_press(self, button):
         button.onclick();
 
-          
 class UI_Battle_Theme:
     def __init__(self, stu, pro, stats, btn_func):
         ui_manager.clear_and_reset();
@@ -202,7 +219,7 @@ class UI_Battle_Theme:
 
 class Battle:
     def __init__(self, player):
-        ui_manager.clear_and_reset();
+        # ui_manager.clear_and_reset();
         self.name = "Battle";
         self.player = player;
         self.round = 0;
@@ -529,13 +546,229 @@ class Battle:
             return;
         self.reset_round();
 
+
+
+class UI_map:
+    def __init__(self, list_of_players, which_round, x_list, y_list, imgs, roll_func, pack_func, data_func, lb_data):
+        ui_manager.clear_and_reset();
+        self.current_id = which_round;
+        self.current_player = list_of_players[which_round];
+        self.img_path = imgs[which_round];
+        self.map_image = pygame_gui.elements.UIImage(rect(110, 10, 400, 400), load_image("./img/map_temp.jpg"));
+        self.chess_image = [pygame_gui.elements.UIImage(rect(x_list[i], y_list[i], 30, 30), load_image(imgs[i])) for i in range(len(imgs))];
+        self.cur_player_name = pygame_gui.elements.UILabel(rect(75, 450, 150, 100), self.current_player.name);
+        self.cur_player_image = pygame_gui.elements.UIImage(rect(40, 480, 60, 60), load_image(self.img_path))
+        self.roll_btn = UIButton(rect(250, 450, 150, 100), "擲骰子", roll_func);
+        self.backpack_btn = UIButton(rect(425, 450, 150, 100), "背包", pack_func);
+        self.data_btn = UIButton(rect(600, 450, 150, 100), "玩家資訊", data_func);
+        self.leaderboard = [pygame_gui.elements.UITextBox(lb_data[i], rect(550, 50 + i * 70, 150, 60)) for i in range(len(lb_data))];
+        self.dice_image = pygame_gui.elements.UIImage(rect(200, 100, 250, 150), load_image("./img/dice_1.png"));
+        self.dice_image.hide();
+        self.walking_options_buttons = [];
+
+    def hide_everything(self, args):
+        self.roll_btn.hide();
+        self.backpack_btn.hide();
+        self.data_btn.hide();
+
+    def show_dice(self, args):
+        points = args["pts"];
+        self.dice_image.show();
+        self.dice_image.set_image(load_image("./img/dice_"+str(points)+".png"));
+
+    def hide_dice(self, args):
+        self.dice_image.hide();
+
+    def show_walking_options(self, args):
+        pos, func = args["pos"], args["btn_func"];
+        self.walking_options_buttons.clear();
+        for i in range(len(pos)):
+            self.walking_options_buttons.append(UIButton(rect(pos[i][0], pos[i][1], 30, 30), "v", func[i]));
+
+    def hide_walking_options(self, args):
+        for each_b in self.walking_options_buttons:
+            each_b.hide();
+
+    def move_to(self, args):
+        pos = args["pos"];
+        self.chess_image[self.current_id].set_position(pos);
+
+    
+class UI_Backpack:
+    def __init__(self, player, page, lb_func, rb_func, return_func):
+        ui_manager.clear_and_reset();
+        
+        self.title = pygame_gui.elements.UILabel(rect(300, 25, 200, 100), player.name + "的背包");
+        self.showing_items_list = [(i, player.items[i]) for i in sorted(player.items.keys())]
+        l, r = (page-1)*4, min(page*4, len(self.showing_items_list));
+        self.items_list = [];
+        for i in range(r-l):
+            self.items_list.append(pygame_gui.elements.UITextBox(self.showing_items_list[l+i][0], rect(200, 150+90*i, 400, 80)));
+
+        self.left_btn = UIButton(rect(200, 520, 100, 50), "<", lb_func);
+        self.right_btn = UIButton(rect(500, 520, 100, 50), ">", rb_func);
+
+        self.return_btn = UIButton(rect(720, 540, 60, 40), "返回", return_func);
+
+class UI_Info:
+    def __init__(self, player, return_func):
+        ui_manager.clear_and_reset();
+        
+        self.title = pygame_gui.elements.UILabel(rect(300, 25, 200, 100), player.name + "的玩家資訊");
+        info_text = "";
+        info_text += "錢:"+str(player.money);
+        info_text += "\n體力:"+str(player.health);
+        info_text += "\n智力:"+str(player.smart);
+        info_text += "\n學分數:"+str(player.total_degree);
+        info_text += "\n個性簽名:這個人很懶什麼都沒留下來\n"
+        self.info = pygame_gui.elements.UITextBox(info_text, rect(200, 200, 400, 300));
+
+        self.return_btn = UIButton(rect(720, 540, 60, 40), "返回", return_func);
+
+class Monopoly:
+    def __init__(self, list_of_players, which_round):
+        self.map_data = self.load_map_data();
+        self.list_of_players = list_of_players;
+        self.current_id = which_round;
+        self.player_cnt = len(list_of_players);
+        self.current_player = self.list_of_players[self.current_id];
+
+        self.init_main_ui();
         
 
+    def init_main_ui(self):
+        sorted_players_list = sorted(self.list_of_players, key = lambda player : player.total_degree, reverse = True);
+        leaderboard_data = [];
+        idx = 1;
+        for i in range(self.player_cnt):
+            if i > 0 and sorted_players_list[i].total_degree < sorted_players_list[i-1].total_degree:
+                idx = i+1;
+            leaderboard_data.append("#"+str(idx)+" "+sorted_players_list[i].name+" "+str(sorted_players_list[i].total_degree));
+        # print(self.map_data);
+        real_x, real_y = list(), list();
+        for player in self.list_of_players:
+            real_x.append(self.to_real_pos(player.pos)[0]);
+            real_y.append(self.to_real_pos(player.pos)[1]);
+        imgs = ["./img/player_"+str(i+1)+".png" for i in range(self.player_cnt)];
+
+        self.ui_theme = UI_map(self.list_of_players, self.current_id, real_x, real_y, imgs, self.roll, self.pack, self.dt, leaderboard_data);
+
+    def load_map_data(self, mypath = "./data/map.csv"):
+        map_data = [];
+        with open(mypath) as f:
+            reader = csv.reader(f);
+            for r in reader:
+                if len(r) < 5 or r[0] == "":
+                    continue;
+                temp = {"id":int(r[0]), "x":int(r[1]), "y":int(r[2]), "next":[int(t) for t in r[3].split(";")], "type":r[4]};
+                # if temp["type"] == "起點":
+                #     print(temp["id"]);
+                map_data.append(temp);
+
+        return map_data;
+
+    def to_real_pos(self, idx):
+        return (self.map_data[idx]["y"] * 26.5 + 175, self.map_data[idx]["x"] * 23 + 90);
+
+    def roll(self):
+        timer = 0.1;
+        pts = random.randint(1, 6);
+        push(self.ui_theme.hide_everything, 0.05);
+        for i in range(10):
+            push(self.ui_theme.show_dice, timer, pts = random.randint(1, 6));
+            timer += 0.1;
+        push(self.ui_theme.show_dice, timer, pts = pts);
+        timer += 2;
+        push(self.ui_theme.hide_dice, timer);
+        push(self.try_to_walk, timer, steps_left = pts);
+
+    def try_to_walk(self, args):
+        steps_left = args["steps_left"];
+        if steps_left == 0:
+            push(self.generate_round_event, 1);
+            return;
+
+        cur_pos, last_pos = self.current_player.pos, self.current_player.from_pos;
+        next_list = [];
+        for i in self.map_data[cur_pos]["next"]:
+            if i != last_pos:
+                next_list.append(i);
+        
+        # debug
+        # print("steps_left: ", steps_left);
+        # print(cur_pos, last_pos);
+        # print(next_list);
+
+        if len(next_list) == 1:
+            real_pos = self.to_real_pos(next_list[0]);
+            push(self.ui_theme.move_to, 0.1, pos = real_pos);
+            push(self.try_to_walk, 0.5, steps_left = steps_left - 1);
+            self.current_player.from_pos = cur_pos;
+            self.current_player.pos = next_list[0];
+        
+        else:
+            real_pos = [self.to_real_pos(i) for i in next_list];
+            funcs = [self.get_walking_options_buttons(i, steps_left - 1) for i in next_list];
+            push(self.ui_theme.show_walking_options, 0.1, pos = real_pos, btn_func = funcs);
+
+    def get_walking_options_buttons(self, pos, steps_left):
+        def func():
+            push(self.ui_theme.hide_walking_options, 0.05);
+            push(self.ui_theme.move_to, 0.1, pos = self.to_real_pos(pos));
+            push(self.try_to_walk, 0.5, steps_left = steps_left);
+            self.current_player.from_pos = self.current_player.pos;
+            self.current_player.pos = pos;
+        return func;
+
+    def pack(self):
+        self.max_pages = max(1, (len(self.current_player.items.keys())+3) // 4);
+        self.ui_theme = UI_Backpack(self.current_player, 1, self.pack_lrbtn_func(0), self.pack_lrbtn_func(2), self.init_main_ui);
+
+    def pack_lrbtn_func(self, pg):
+        if pg < 1 or pg > self.max_pages:
+            return None;
+        def func():
+            self.ui_theme = UI_Backpack(self.current_player, pg, self.pack_lrbtn_func(pg-1), self.pack_lrbtn_func(pg+1), self.init_main_ui);
+        return func;
+
+    def dt(self):
+        self.ui_theme = UI_Info(self.current_player, self.init_main_ui);
+
+    def generate_round_event(self, args):
+        event_now = self.map_data[self.current_player.pos]["type"];
+        print(self.map_data[self.current_player.pos]["type"]);
+        list_of_event_types = ['起點', '計程', '體育', '普物', '微積分', '交電',\
+            '普化', '國文', 'BOSS', '愛心', '機會命運', '道具', '事件']
+        # l_of_event_types = set();
+        # for i in self.map_data:
+        #     l_of_event_types.add(i["type"]);
+
+        # print(l_of_event_types);
+        if event_now == "起點":
+            self.info = pygame_gui.elements.UITextBox("恭喜你來到起點!但是因為作者偷懶，所以什麼事都不會發生!");
+            push(self.hide_info, 2);
+            push(self.next_player, 2.1);
+        else:
+            print("not done yet...");
+            push(self.next_player, 0.1);
+
+    def hide_info(self):
+        self.info.kill();
+
+    def next_player(self, args):
+        self.current_id = (self.current_id + 1) % self.player_cnt;
+        self.current_player = self.list_of_players[self.current_id];
+        self.init_main_ui();
 
 
-class UI_CSWAP_Theme:
-    def __init__(self):
-        pass;
+# class UI_CSWAP_Theme:
+#     def __init__(self):
+#         pass;
+
+class CSWAP:
+    # 廖宇軒可以改這裡面的東東
+    def __init__(self, player):
+        ui_manager.clear_and_reset();
 
 class Selecting_Problem:
     def __init__(self, path):
@@ -551,29 +784,20 @@ class Selecting_Problem:
                 print("An error occured while importing data files: " + str(err));
         self.length = len(self.problem_list);
 
-    
-
-
 # Player Data
 
 class Player:
-    def __init__(self, i, ch):
+    def __init__(self, i, nm, spos):
         self.id = i;
-        self.chess = ch;
-        self.pos = "A0";
+        self.name = nm;
+        self.pos = spos;
+        self.from_pos = 0;
         self.money = 0;
-        self.hp = 0;
-        self.items = {};
-        self.score = {"計算機程式設計":0};
-
-    def move(self, the_map, steps):
-        for i in range(steps):
-            self.move_next_block(the_map);
-
-    def move_next_block(self, the_map):
-        next_block = the_map[self.pos]["next"];
-        self.chess.move(the_map[next_block]["x"], the_map[next_block]["y"]);
-        self.pos = next_block;
+        self.health = 0;
+        self.smart = 0;
+        self.total_degree = 0;
+        self.items = {"NO LA":7122, "投石器":1, "電石":2, "燒雞":12, "bruh":123};
+        self.score = {"微積分":0, "普通物理學":0, "計算機程式設計":0, "交換電路與邏輯設計":0, "普通化學":0, "生物科學通論":0};
 
     def add_item(self, item_name, count):
         if item_name in self.items.keys():
@@ -582,32 +806,33 @@ class Player:
             self.items[item_name] = count;
 
 # debug 用
-player0 = Player(1, None);
+player0 = Player(99, "test", 0);
 player0.add_item("投石器", 1);
 player0.add_item("電神的守護", 1);
 player0.add_item("星爆氣流斬", 1);
 
-# 之後可以搬到monopoly_theme的class裡面
-def load_map_data(mypath = "./data/map.txt"):
-    map_data = {};
-    with open(mypath) as f:
-        for i in f.readlines():
-            print(i);
-            name, xpos, ypos, is_split, nextname = i.strip().split(",");
-            map_data[name] = {"x":int(xpos), "y":int(ypos), "is_split":int(is_split), "next":nextname};
-    return map_data;
 
 class Game:
     def __init__(self):
         self.player_list = [];
+        self.start_list = [1, 9, 61, 72];
         self.current_game_stage = Start_Menu();
 
     def initialize_new_stage(self, args = dict()):
         Stage, return_value = args["name"], args["value"];
         
         if Stage == "Start_Menu":
-            if return_value == 0:
-                self.current_game_stage = Battle(player0);
+            # 如果你要測試大富翁 就uncomment下面這兩行
+            self.new_game(return_value);
+            self.current_game_stage = Monopoly(self.player_list, 0);
+
+            # 如果你要測試明豐Battle 就uncomment下面這一行
+            # self.current_game_stage = Battle(player0);
+
+            # 如果你要測試交電CSWAP 就uncomment下面這一行
+            # self.current_game_stage = CSWAP(player0);
+
+            pass;
 
         if Stage == "Battle":
             if return_value == 1:
@@ -615,6 +840,10 @@ class Game:
             elif return_value == -1:
                 print("You lose!");
 
+    def new_game(self, player_cnt):
+        self.player_list = [];
+        for i in range(player_cnt):
+            self.player_list.append(Player(i, "Player" + str(i+1), self.start_list[i]));
 
 def main():
     pygame.init();
