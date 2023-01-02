@@ -262,7 +262,6 @@ class ZN_Battle:
         res = self.check_win_condition();
         if res !=0:
             return;
-        
         damage=self.generate_student_atk_event(stat);
         if(self.student_state["reverse"]==True):
             self.student_state["hp"]-=damage
