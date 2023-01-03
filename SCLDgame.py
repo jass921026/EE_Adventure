@@ -23,16 +23,19 @@ def SCLDgame(N, time_limit): #N是初始有N個CSWAP
 
     Color=[[255,255,255],[255,0,0],[0,255,0],[0,0,255],[255,255,0],[255,0,255],[0,255,255],[127,127,0],[127,0,127],[0,127,127],[127,0,0],[0,127,0],[0,0,127],[64,0,0],[0,64,0],[0,0,64]]
     class Ru(pygame.sprite.Sprite):
-        def __init__(self):
-            self.raw_image=pygame.image.load('./img/scld_rule.png')
-            self.image=pygame.transform.scale(self.raw_image,(800,300))
-            self.rect=self.image.get_rect()
-            self.rect.topleft=(0,300)
+        def __init__(itself):
+            itself.raw_image=pygame.image.load('./img/scld_rule.png')
+            itself.image=pygame.transform.scale(itself.raw_image,(800,300))
+            itself.rect=itself.image.get_rect()
+            itself.rect.topleft=(0,300)
 
     class CS(pygame.sprite.Sprite):
         def __init__(itself,x,y,t=0):
             pygame.sprite.Sprite.__init__(itself)
-            itself.raw_image=pygame.image.load('./img/CSWAP.png')
+            if N<4:
+                itself.raw_image=pygame.image.load('./img/CSWAP.png')
+            else:
+                itself.raw_image=pygame.image.load('./img/CSWAP2.png')
             itself.image=pygame.transform.scale(itself.raw_image,(Lc,Lc))
             itself.rect=itself.image.get_rect()
             itself.rect.topleft=(x,y)
@@ -281,7 +284,7 @@ def SCLDgame(N, time_limit): #N是初始有N個CSWAP
             return -1;
 
 if __name__=="__main__":
-    ret_val = SCLDgame(6, 777)
+    ret_val = SCLDgame(4, 777)
     print(ret_val);
             
                 
