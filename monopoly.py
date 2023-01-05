@@ -915,7 +915,7 @@ class ZN_Battle:
                 elif(TA_stat_name=="給你上機考考古題"):
                     self.push(self.ui_theme.show_text, text = f"助教給你上機考考古題。你寫的很辛苦。你受到25點傷害。");
                     damage=25
-                    timer += 2;
+                    self.timer += 2;
                     self.push(self.ui_theme.show_text, text = f"不過這也讓你的程式功力大幅提升！");
                 elif(TA_stat_name=="非常非常會講課"):
                     self.push(self.ui_theme.show_text, text = f"助教非常非常會講課。你的攻擊力大幅提升！");
