@@ -379,7 +379,7 @@ class Battle:
         return 0;
 
     def generate_professor_atk_event(self, stat_name):
-        self.push(self.ui_theme.show_text, text = f"石明豐使用了 {stat_name} !");
+        self.push(self.ui_theme.show_text, text = f"石明豐教授使用了 {stat_name} !");
         self.timer += 2;
 
         damage = 0;
@@ -410,7 +410,7 @@ class Battle:
             self.professor_state["raging"] = 4;
             self.push(self.ui_theme.show_professor, raging = 4);
             self.timer += 1;
-            self.push(self.ui_theme.show_text, text = "石明豐的傷害增加了!");
+            self.push(self.ui_theme.show_text, text = "石明豐教授的傷害增加了!");
             self.timer += 2;
             
         elif stat_name == "vpython作業":
@@ -488,7 +488,7 @@ class Battle:
         self.timer += 0.2;
 
     def get_intro(self):
-        self.push(self.ui_theme.show_text, text = "石明豐出現了!");
+        self.push(self.ui_theme.show_text, text = "石明豐教授出現了!");
         self.timer += 2;
 
     def generate_selecting_problem(self, args):
@@ -711,7 +711,7 @@ class ZN_Battle:
             return;
         I_love_TAs=["HW1助教龔鈺翔","HW2助教游弘毅","HW3助教卓寧文","大助教郭哲璁"]
         IIIIII = self.TA_state["stage"]-1;
-        self.push(self.ui_theme.show_text, text = f"林宗男召喚了{I_love_TAs[IIIIII]}，好可怕！");
+        self.push(self.ui_theme.show_text, text = f"林宗男教授召喚了{I_love_TAs[IIIIII]}，好可怕！");
         self.timer += 2;
         if(self.TA_state["stage"]==1):
             self.TA_state= {"hp":50,"hp_max":50,"TA_live":True,"stage":1,"attack_fail":False};
@@ -1077,7 +1077,7 @@ class ZN_Battle:
                 self.timer += 2
                 self.push(self.ui_theme.show_text, text = "裡面擺放著你jupyter hub的密碼，你永遠記不起來");
                 self.timer += 2
-                self.push(self.ui_theme.show_text, text = "他對你打敗林宗男一點屁用也沒有！");
+                self.push(self.ui_theme.show_text, text = "他對你打敗林宗男教授一點屁用也沒有！");
                 self.timer += 2
                 self.push(self.ui_theme.show_text, text = "你打倒了HW1助教龔鈺翔，獲得了代表大公無私的「龔」之魂；打倒了HW2助教游弘毅，獲得了代表堅忍不拔的「毅」之魂；打倒了HW3助教卓寧文，獲得了代表卓越超群的「卓」之魂；打倒了鬼才助教郭哲璁，獲得了代表聰明絕頂的「璁」之魂。");
                 self.timer += 4
@@ -1085,7 +1085,7 @@ class ZN_Battle:
                 self.timer += 2
                 self.push(self.ui_theme.show_text, text = "合體「卓」之魂、「璁」之魂、「毅」之魂、「龔」之魂，被稱為「卓璁毅龔軼事」，你召喚了「左忠毅公」左光斗！");
                 self.timer += 8
-                self.push(self.ui_theme.show_text, text = "現在，利用古人左光斗的傳奇之力打倒林宗男吧！");
+                self.push(self.ui_theme.show_text, text = "現在，利用古人左光斗的傳奇之力打倒林宗男教授吧！");
                 self.timer += 2
             else:
                 print("wowoaa")
@@ -1104,13 +1104,13 @@ class ZN_Battle:
     def get_intro(self):
         self.timer = 0;
         
-        self.push(self.ui_theme.show_text, text = "林宗男出現了!");
+        self.push(self.ui_theme.show_text, text = "林宗男教授出現了!");
         self.timer += 2
-        self.push(self.ui_theme.show_text, text = "林宗男：我已經獲得了遠古四大魂的力量，現在你們誰也阻止不了我！");
+        self.push(self.ui_theme.show_text, text = "林宗男教授：我已經獲得了遠古四大魂的力量，現在你們誰也阻止不了我！");
         self.timer += 3
-        self.push(self.ui_theme.show_text, text = "不知道林宗男接下來要做什麼，看來只好用Python好棒棒打倒他了！");
+        self.push(self.ui_theme.show_text, text = "不知道他接下來要做什麼，看來只好用Python好棒棒打倒他了！");
         self.timer += 3
-        self.push(self.ui_theme.show_text, text = "林宗男將四大魂附身在四位得力助手身上，一人一個。你要一一奪回四大魂並合體，收復四大魂的力量，打敗林宗男吧！");
+        self.push(self.ui_theme.show_text, text = "林宗男教授將四大魂附身在四位得力助手身上，一人一個。你要一一奪回四大魂並合體，收復四大魂的力量，打敗林宗男教授吧！");
         self.timer += 5
 
 # End of ZN battle
@@ -1287,6 +1287,7 @@ class Monopoly:
                 push(self.ui_theme.show_info, 0.1, text = "你贏了!\n你獲得了普物成績40分+金幣*100+Python好棒棒");
                 self.current_player.change_score("普物", 40);
                 self.current_player.money += 100;
+                self.current_player.add_item("Python好棒棒", 1);
                 self.current_player.defeat_mf = True;
                 # for i in range(self.player_cnt):
                 #     self.list_of_players[i].calculate_degree();
@@ -1569,7 +1570,7 @@ class Monopoly:
 
         elif event_now == "MF":
             if self.current_player.defeat_mf:
-                push(self.ui_theme.show_info, 0.1, text = "你已經打敗過石明豐了!!!");
+                push(self.ui_theme.show_info, 0.1, text = "你已經打敗過石明豐教授了!!!");
                 push(self.ui_theme.hide_info, 2);
                 push(self.next_player, 2.1);
             else:
@@ -1865,15 +1866,8 @@ class Game:
         Stage, return_value = args["name"], args["value"];
         
         if Stage == "Start_Menu":
-            # 如果你要測試大富翁 就uncomment下面這兩行
             self.new_game(return_value);
             self.current_game_stage = Monopoly(self.player_list, 0);
-
-            # 如果你要測試明豐Battle 就uncomment下面這一行
-            # self.current_game_stage = Battle(player0);
-
-            # 如果你要測試交電CSWAP 就uncomment下面這一行
-            # self.current_game_stage = CSWAP(player0);
 
         elif Stage == "Monopoly":
             if return_value[1] == "SCLD":
